@@ -90,11 +90,19 @@ function stats(u, from = '0000') {
   const ss = sessions(u).filter(s => s.date >= from), rs = ratings(ss);
   return { points: rs.reduce((a, b) => a + b, 0), avg: avg(rs), sessions: ss.length, tasks: rs.length };
 }
-async function refresh() { try { S.db = await Store.getAll(); } catch (e) { toast(e.message); } }
+let writes = Promise.resolve(), inflight = 0;   // writes go out in order, in the background
+const enqueue = (fn, msg) => {
+  inflight++;
+  writes = writes.then(fn).catch(e => toast(msg + ': ' + e.message)).finally(() => inflight--);
+};
+async function refresh() {
+  if (inflight) return;                         // don't overwrite local changes that haven't synced yet
+  try { const db = await Store.getAll(); if (!inflight) S.db = db; } catch (e) { toast(e.message); }
+}
 async function persist(rec) {
   const i = (S.db[S.me.name] ||= []).findIndex(r => r.id === rec.id);
   i >= 0 ? S.db[S.me.name][i] = rec : S.db[S.me.name].push(rec);
-  try { await Store.upsert(S.me, rec); } catch (e) { toast('Save failed: ' + e.message); throw e; }
+  enqueue(() => Store.upsert(S.me, rec), 'Save failed');
 }
 
 /* ---------- views ---------- */
@@ -268,7 +276,11 @@ function render() {
 /* ---------- actions ---------- */
 const rowsOf = bf => [...document.querySelectorAll('#rows .trow')].map(r => ({ text: r.querySelector('.t-text').value.trim(), cat: r.querySelector('.cat .on').dataset.v, rating: +(r.querySelector('.rate .on')?.dataset.v || 0) })).filter(t => t.text);
 const timeNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const go = (view, who) => { S.view = view; S.who = who || null; S.menu = false; S.backfill = false; S.sel = today(); S.month = new Date(); return refresh().then(render); };
+const go = (view, who) => {
+  S.view = view; S.who = who || null; S.menu = false; S.backfill = false; S.sel = today(); S.month = new Date();
+  render();                                     // show the page at once from what we have
+  if (view === 'leaderboard' || view === 'profile') refresh().then(() => { if (S.view === view && (S.who || null) === (who || null)) render(); });
+};
 
 const actions = {
   async login() {
@@ -342,7 +354,7 @@ const actions = {
 async function remove(id) {
   S.db[S.me.name] = S.db[S.me.name].filter(r => r.id !== id);
   render();
-  try { await Store.remove(S.me, id); } catch (e) { toast('Delete failed: ' + e.message); }
+  enqueue(() => Store.remove(S.me, id), 'Delete failed');
 }
 
 document.addEventListener('click', e => {
