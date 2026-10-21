@@ -15,8 +15,11 @@ const API = window.FREED_API;
 const Store = {
   remote: !!API,
   async call(action, body) {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action, ...body }) });
-    const j = await r.json();
+    let j;
+    try {
+      const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action, ...body }) });
+      j = await r.json();
+    } catch (e) { throw new Error('Could not reach the Google Sheet backend. Check the deployment is set to "Anyone" and redeploy a new version.'); }
     if (!j.ok) throw new Error(j.error || 'Server error');
     return j;
   },
