@@ -10,6 +10,6 @@ Serve the folder statically (`python3 -m http.server`). With no setup it runs in
 2. Paste `apps-script/Code.gs`, then Deploy > New deployment > Web app (Execute as: Me, Access: Anyone).
 3. Paste the `/exec` URL into `config.js` as `FREED_API`.
 
-Each person gets their own tab. A `Leaderboard` tab updates on every save. Photos go to a Drive folder called "Freed Photos".
+Each person gets their own tab. A `Leaderboard` tab updates on every save. Photos go to the shared Freed Drive folder.
 
 PINs are a light lock for a trusted group, not strong security.

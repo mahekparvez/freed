@@ -2,7 +2,7 @@
 // Deploy: Extensions > Apps Script > paste this > Deploy > Web app
 // (Execute as: Me, Who has access: Anyone). Paste the /exec URL into config.js.
 const SHEET_ID = '1sJw0GarGdg2NFJ7SBNDA4s7z-rEgRntO5QDnTabbLh0';
-const PHOTO_FOLDER = 'Freed Photos';
+const PHOTO_FOLDER_ID = '1yYtvAo1xv2nbPSTFbK7n169eDHkFlHBW'; // Freed Drive folder
 const RESERVED = ['users', 'leaderboard'];
 const HEAD = ['Type', 'ID', 'Date', 'Summary', 'Avg rating', 'Data'];
 
@@ -60,8 +60,7 @@ const ACTIONS = {
     check_(r);
     const m = /^data:image\/\w+;base64,(.+)$/.exec(r.dataUrl || '');
     if (!m) throw new Error('Bad image');
-    const it = DriveApp.getFoldersByName(PHOTO_FOLDER);
-    const folder = it.hasNext() ? it.next() : DriveApp.createFolder(PHOTO_FOLDER);
+    const folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
     const file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(m[1]), 'image/jpeg', r.name + '-' + Date.now() + '.jpg'));
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     return { url: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w800' };

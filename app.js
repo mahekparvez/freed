@@ -100,7 +100,7 @@ const pill = c => `<span class="pill ${c}">${CATS[c][0]} ${CATS[c][1]}</span>`;
 const avatar = n => `<span class="av">${esc(n[0].toUpperCase())}</span>`;
 const catOptions = `${Object.entries(CATS).map(([k, v]) => `<option value="${k}">${v[0]} ${v[1]}</option>`).join('')}`;
 const taskRow = () => `<div class="trow"><input class="t-text" placeholder="What will you finish?"><select class="t-cat">${catOptions}</select><button class="x" data-act="rmRow">✕</button></div>`;
-const photoBox = (id, label) => `<label class="photo" id="ph-${id}"><input type="file" accept="image/*" capture="user" hidden data-photo="${id}">📷 ${label}</label>`;
+const photoBox = (id, label) => `<label class="photo" id="ph-${id}"><input type="file" accept="image/*" capture="user" hidden data-photo="${id}"><b>📷</b>${label}</label>`;
 const rateRow = n => `<div class="rate" data-i="${n}">${[1, 2, 3, 4, 5].map(i => `<button data-act="rate" data-v="${i}">${i}</button>`).join('')}</div>`;
 
 function sessionCard(s, ro) {
@@ -119,28 +119,31 @@ function goalsHTML() {
     return `<h3 style="margin-top:14px">${title}</h3>${gs.map(g => `<div class="goal ${g.data.done ? 'done' : ''}"><input type="checkbox" data-act="toggleGoal" data-id="${g.id}" ${g.data.done ? 'checked' : ''}><span class="grow">${esc(g.data.text)}</span><button class="x" data-act="delGoal" data-id="${g.id}">✕</button></div>`).join('') || '<div class="muted small">None yet</div>'}
       <div class="row" style="margin-top:6px"><input class="grow" id="g-${kind}" placeholder="Add a ${kind} goal"><button class="btn sm" data-act="addGoal" data-kind="${kind}">Add</button></div>`;
   };
-  return `<h2>🎯 Goals</h2>${block('weekly', wk, 'This week')}${block('daily', t, 'Today')}`;
+  return `<h2>Goals</h2>${block('weekly', wk, 'This week')}${block('daily', t, 'Today')}`;
 }
 
 function viewToday() {
   const me = S.me.name, active = recs(me, 'session').find(s => s.data.status === 'active');
-  const done = sessions(me).filter(s => s.date === today());
-  let h = `<h1>Today</h1><div class="muted">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · 🔥 ${streak(me)}-day streak</div>`;
+  const done = sessions(me).filter(s => s.date === today()), wk = stats(me, weekStart(today()));
+  const hr = new Date().getHours(), hi = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+  let h = `<h1>${hi}, ${esc(me)}</h1><div class="row wrap"><span class="muted">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span><span class="chip">🔥 ${streak(me)}-day streak</span></div><div class="cols"><div>`;
   if (active) {
     const d = active.data;
-    h += `<h2>Session in progress</h2><div class="card"><div class="photos"><div><img class="thumb" src="${esc(d.startPhoto)}" alt=""><div class="muted small">Started ${esc(d.startedAt)}</div></div>${photoBox('end', 'End-of-session photo')}</div>
-      <h3 style="margin-top:14px">Rate each task (1–5)</h3>
+    h += `<h2>Session in progress</h2><div class="card"><div class="photos"><div><img class="thumb" src="${esc(d.startPhoto)}" alt=""><div class="muted small" style="margin-top:6px">Started ${esc(d.startedAt)}</div></div>${photoBox('end', 'Add your end photo')}</div>
+      <h2 style="margin-top:22px">Rate each task</h2>
       ${d.tasks.map((t, i) => `<div class="task">${pill(t.cat)}<span class="grow">${esc(t.text)}</span>${rateRow(i)}</div>`).join('')}
-      <textarea id="note" rows="2" style="width:100%;margin-top:10px" placeholder="Reflection (optional)"></textarea>
-      <div class="row" style="margin-top:10px"><button class="btn" data-act="finish">Finish session</button></div></div>`;
+      <div class="muted small" style="margin-top:6px">1 = barely touched it · 5 = nailed it</div>
+      <textarea id="note" rows="2" style="width:100%;margin-top:12px" placeholder="Reflection (optional)"></textarea>
+      <div style="margin-top:14px"><button class="btn big" data-act="finish">Finish session</button></div></div>`;
   } else {
-    h += `<h2>Start a session</h2><div class="card"><div id="rows">${taskRow()}${taskRow()}</div>
+    h += `<h2>New session</h2><div class="card"><h3 style="margin-bottom:6px">What will you finish before you stop?</h3><div id="rows">${taskRow()}${taskRow()}</div>
       <button class="btn ghost sm" data-act="addRow">+ Add task</button>
-      <div style="margin:14px 0">${photoBox('start', 'Start-of-session photo (required)')}</div>
-      <button class="btn" data-act="start">Start session</button></div>`;
+      <div style="margin:18px 0">${photoBox('start', 'Add your start photo (required)')}</div>
+      <button class="btn big" data-act="start">Start session</button></div>`;
   }
   if (done.length) h += `<h2>Done today</h2>${done.map(s => sessionCard(s)).join('')}`;
-  return h + goalsHTML();
+  h += `</div><aside><h2 style="margin-top:32px">This week</h2><div class="stats three"><div class="stat"><b>${wk.points}</b>points</div><div class="stat"><b>${wk.sessions}</b>sessions</div><div class="stat"><b>${wk.avg ? wk.avg.toFixed(1) : '–'}</b>avg</div></div>${goalsHTML()}</aside></div>`;
+  return h;
 }
 
 function calendarHTML(u, ro) {
@@ -153,9 +156,9 @@ function calendarHTML(u, ro) {
     cells += `<div class="day ${a ? 'r' + Math.round(a) : ''} ${d === today() ? 'today' : ''} ${d === S.sel ? 'sel' : ''}" data-act="selDay" data-d="${d}"><span class="n">${i}</span>${mk.map(x => `<div class="mk">⭐ ${esc(x.data.label)}</div>`).join('')}${a ? `<span class="r">${a.toFixed(1)}</span>` : ''}</div>`;
   }
   const sel = S.sel, selSs = sessions(u).filter(s => s.date === sel), selMk = marks.filter(x => x.date === sel);
-  return `<div class="row"><button class="btn ghost sm" data-act="prevMonth">←</button><h2 class="grow" style="margin:0;text-align:center">${m.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h2><button class="btn ghost sm" data-act="nextMonth">→</button></div>
+  return `<div class="row"><button class="btn ghost sm" data-act="prevMonth">←</button><h3 class="grow" style="text-align:center;font-size:18px">${m.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h3><button class="btn ghost sm" data-act="nextMonth">→</button></div>
     <div class="muted small" style="text-align:center">${mss.length} sessions · avg self-rating ${avg(ratings(mss)).toFixed(1) || '–'}</div>
-    <div class="cal">${cells}</div>
+    <div class="cal">${cells}</div><div class="legend">Rough <i class="r1"></i><i class="r2"></i><i class="r3"></i><i class="r4"></i><i class="r5"></i> Nailed it</div>
     <h2>${parse(sel).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
     ${selMk.map(x => `<div class="goal">⭐ <span class="grow">${esc(x.data.label)}</span>${ro ? '' : `<button class="x" data-act="delMark" data-id="${x.id}">✕</button>`}</div>`).join('')}
     ${ro ? '' : `<div class="row wrap"><input id="mark" class="grow" placeholder="Mark an important date (exam, deadline…)"><button class="btn sm" data-act="addMark">Mark</button><button class="btn ghost sm" data-act="toggleBackfill">${S.backfill ? 'Cancel' : '+ Log a past session'}</button></div>`}
@@ -163,44 +166,46 @@ function calendarHTML(u, ro) {
       <div class="muted small" style="margin:8px 0">Rate each task:</div><div id="bf-rates"></div>
       <div class="photos" style="margin:10px 0">${photoBox('start', 'Start photo (optional)')}${photoBox('end', 'End photo (optional)')}</div>
       <button class="btn" data-act="saveBackfill">Save to ${esc(sel)}</button></div>` : ''}
-    ${selSs.map(s => sessionCard(s, ro)).join('') || (S.backfill ? '' : '<div class="empty">No sessions this day.</div>')}`;
+    ${selSs.map(s => sessionCard(s, ro)).join('') || (S.backfill ? '' : '<div class="empty">No sessions logged this day.</div>')}`;
 }
 
-function viewCalendar() { return `<h1>Calendar</h1><div class="muted">Your ratings every day. Click a day to see, mark, or backfill it.</div>${calendarHTML(S.me.name, false)}`; }
+function viewCalendar() { return `<h1>Calendar</h1><div class="muted">Your rating for every day. Pick a day to mark it or log a past session.</div>${calendarHTML(S.me.name, false)}`; }
 
 function viewLeaderboard() {
   const from = S.period === 'week' ? weekStart(today()) : S.period === 'month' ? today().slice(0, 7) + '-01' : '0000';
   const rows = Object.keys(S.db).map(n => ({ n, ...stats(n, from), streak: streak(n) })).sort((a, b) => b.points - a.points || b.avg - a.avg);
   const tab = (k, l) => `<button class="${S.period === k ? 'on' : ''}" data-act="period" data-k="${k}">${l}</button>`;
-  return `<h1>🏆 Leaderboard</h1><div class="muted">Points = sum of your self-ratings. Click anyone to see their logs.</div>
+  const pod = (r, i) => `<div class="pod ${i === 0 ? 'first' : ''}" data-act="user" data-n="${esc(r.n)}"><div class="medal">${['🥇', '🥈', '🥉'][i]}</div><div class="nm">${esc(r.n)}</div><b>${r.points}</b><span class="muted small">points</span></div>`;
+  return `<h1>Leaderboard</h1><div class="muted">Points are the sum of your self-ratings. Tap anyone to see their logs.</div>
     <div class="tabs">${tab('week', 'This week')}${tab('month', 'This month')}${tab('all', 'All time')}</div>
-    ${rows.length ? `<table><tr><th>#</th><th>Name</th><th>Points</th><th>Avg</th><th>Sessions</th><th>Streak</th></tr>${rows.map((r, i) => `<tr class="click" data-act="user" data-n="${esc(r.n)}"><td>${['🥇', '🥈', '🥉'][i] || i + 1}</td><td><span class="row">${avatar(r.n)}${esc(r.n)}</span></td><td><b>${r.points}</b></td><td>${r.avg ? r.avg.toFixed(1) : '–'}</td><td>${r.sessions}</td><td>${r.streak ? '🔥' + r.streak : '–'}</td></tr>`).join('')}</table>` : '<div class="empty">Nobody here yet.</div>'}`;
+    ${rows.length ? `<div class="podium">${rows.slice(0, 3).map(pod).join('')}</div>
+    <table><tr><th>#</th><th>Name</th><th>Points</th><th>Avg</th><th>Sessions</th><th>Streak</th></tr>${rows.map((r, i) => `<tr class="click" data-act="user" data-n="${esc(r.n)}"><td>${i + 1}</td><td><span class="row">${avatar(r.n)}${esc(r.n)}</span></td><td><b>${r.points}</b></td><td>${r.avg ? r.avg.toFixed(1) : '–'}</td><td>${r.sessions}</td><td>${r.streak ? '🔥 ' + r.streak : '–'}</td></tr>`).join('')}</table>` : '<div class="empty">Nobody here yet. Finish a session to get on the board.</div>'}`;
 }
 
 function viewProfile(u) {
   const st = stats(u), ro = u !== S.me.name, by = {};
   sessions(u).forEach(s => s.data.tasks.forEach(t => by[t.cat] = (by[t.cat] || 0) + 1));
   return `<div class="row"><button class="btn ghost sm" data-act="nav" data-v="leaderboard">← Leaderboard</button></div>
-    <h1 class="row" style="margin-top:12px">${avatar(u)} ${esc(u)}</h1>
+    <h1 class="row" style="margin-top:14px"><span class="av lg">${esc(u[0].toUpperCase())}</span> ${esc(u)}</h1>
     <div class="stats"><div class="stat"><b>${st.points}</b>points</div><div class="stat"><b>${st.avg ? st.avg.toFixed(1) : '–'}</b>avg rating</div><div class="stat"><b>${st.sessions}</b>sessions</div><div class="stat"><b>🔥 ${streak(u)}</b>day streak</div></div>
     <div class="row wrap">${Object.keys(CATS).map(c => `${pill(c)} <span class="muted small">${by[c] || 0}</span>`).join(' ')}</div>
-    ${calendarHTML(u, ro)}`;
+    ${calendarHTML(u, ro)}${ro ? '' : '<div style="margin-top:40px"><button class="btn ghost sm" data-act="logout">Log out</button></div>'}`;
 }
 
 function render() {
   const app = $('#app');
   if (!S.me) {
-    app.innerHTML = `<div class="login"><h1>🕊️ Freed</h1><p class="muted">Set goals. Show up. Rate yourself honestly.</p>
+    app.innerHTML = `<div class="login"><div class="big-emoji">🕊️</div><h1>Freed</h1><p class="muted">Set goals. Show up. Rate yourself honestly.</p>
       ${Store.remote ? '' : '<div class="banner">Demo mode: data stays in this browser. Add your Apps Script URL in config.js to sync with Google Sheets.</div>'}
       <input id="l-name" placeholder="Your name" autocomplete="username"><input id="l-pin" type="password" inputmode="numeric" placeholder="PIN (4+ digits)" autocomplete="current-password">
       <button class="btn" data-act="login" style="width:100%;margin-top:6px">Enter</button><p class="muted small">New name? We'll create your account.</p></div>`;
     return;
   }
-  const nav = (v, l) => `<button class="${S.view === v ? 'on' : ''}" data-act="nav" data-v="${v}">${l}</button>`;
+  const nav = (v, l) => `<button class="${(S.view === v || (v === 'me' && S.view === 'profile' && S.who === S.me.name)) ? 'on' : ''}" data-act="nav" data-v="${v}">${l}</button>`;
   const body = S.view === 'today' ? viewToday() : S.view === 'calendar' ? viewCalendar() : S.view === 'leaderboard' ? viewLeaderboard() : viewProfile(S.who || S.me.name);
-  app.innerHTML = `<div class="layout"><aside class="side"><div class="me">${avatar(S.me.name)} ${esc(S.me.name)}</div>
-    <div class="nav">${nav('today', '✏️ Today')}${nav('calendar', '🗓️ Calendar')}${nav('leaderboard', '🏆 Leaderboard')}${nav('me', '👤 My profile')}</div>
-    <div class="foot"><button class="btn ghost sm" data-act="logout">Log out</button></div></aside><main>${body}</main></div>`;
+  app.innerHTML = `<div class="layout"><aside class="side"><div class="brand">🕊️ Freed</div>
+    <div class="nav">${nav('today', '<span class="ic">✏️</span>Today')}${nav('calendar', '<span class="ic">🗓️</span>Calendar')}${nav('leaderboard', '<span class="ic">🏆</span>Leaderboard')}${nav('me', '<span class="ic">👤</span>Profile')}</div>
+    <div class="me">${avatar(S.me.name)} ${esc(S.me.name)}</div></aside><main>${body}</main></div>`;
   const bf = $('#bf-rates'); if (bf) syncBackfillRates();
 }
 
